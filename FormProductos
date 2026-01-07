@@ -1,0 +1,133 @@
+from ._anvil_designer import FormProductosTemplate
+from anvil import *
+import anvil.server
+
+class FormProductos(FormProductosTemplate):
+  def __init__(self, **properties):
+    self.init_components(**properties)
+
+    cp = ColumnPanel(background="#ffffff", spacing="medium")
+    self.add_component(cp)
+
+    cp.add_component(Label(
+      text="Gestión de Productos",
+      font_size=22,
+      bold=True
+    ))
+
+    self.txt_nombre = TextBox(placeholder="Nombre del producto")
+    self.txt_precio = TextBox(placeholder="Precio")
+
+    btn_add = Button(text="Agregar", role="primary")
+    btn_add.set_event_handler("click", self.agregar)
+
+    cp.add_component(self.txt_nombre)
+    cp.add_component(self.txt_precio)
+    cp.add_component(btn_add)
+
+    cp.add_component(Spacer(height=20))
+    cp.add_component(Label(text="Eliminar producto"))
+
+    self.txt_eliminar = TextBox(placeholder="Nombre a eliminar")
+
+    btn_del = Button(text="Eliminar", role="danger")
+    btn_del.set_event_handler("click", self.eliminar)
+
+    cp.add_component(self.txt_eliminar)
+    cp.add_component(btn_del)
+
+    cp.add_component(Spacer(height=20))
+
+    btn_list = Button(text="Listar productos", role="secondary")
+    btn_list.set_event_handler("click", self.listar)
+
+    cp.add_component(btn_list)
+    cp = ColumnPanel()
+    self.add_component(cp)
+
+    cp.add_component(Label(text="Filtrar productos", bold=True))
+
+    self.dd_campo = DropDown(
+      items=["precio", "nombre"],
+      selected_value="precio"
+    )
+
+    self.dd_orden = DropDown(
+      items=["asc", "desc"],
+      selected_value="asc"
+    )
+
+    self.txt_limite = TextBox(
+      placeholder="Límite de resultados",
+      text="5"
+    )
+
+    btn = Button(text="Aplicar filtro", role="primary")
+    btn.set_event_handler("click", self.filtrar)
+
+    self.area = TextArea(height=200, enabled=False)
+
+
+    cp.add_component(Label(text="Ordenar por"))
+    cp.add_component(self.dd_campo)
+
+    cp.add_component(Label(text="Orden"))
+    cp.add_component(self.dd_orden)
+
+    cp.add_component(Label(text="Límite"))
+    cp.add_component(self.txt_limite)
+
+    cp.add_component(btn)
+    cp.add_component(self.area)
+
+
+  def agregar(self, **event_args):
+    r = anvil.server.call(
+      "agregar_producto",
+      self.txt_nombre.text,
+      int(self.txt_precio.text)
+    )
+    alert(r)
+
+  def eliminar(self, **event_args):
+    r = anvil.server.call(
+      "eliminar_producto",
+      self.txt_eliminar.text
+    )
+    alert(r)
+
+  def listar(self, **event_args):
+    productos = anvil.server.call("listar_productos")
+    
+    if not productos:
+     alert("No hay productos registrados")
+     return
+    texto = "PRODUCTOS REGISTRADOS\n\n"
+    for p in productos:
+     texto += f"• {p['nombre']} — S/ {p['precio']}\n"
+    alert(texto)
+
+  def filtrar(self, **event_args):
+    try:
+      limite = int(self.txt_limite.text)
+    except:
+      self.area.text = "El límite debe ser un número"
+      return
+
+    productos = anvil.server.call(
+      "filtrar_productos",
+      self.dd_campo.selected_value,
+      self.dd_orden.selected_value,
+      limite
+    )
+
+    if not productos:
+      self.area.text = "No hay productos"
+      return
+
+    texto = ""
+    for p in productos:
+      texto += f"{p['nombre']} — S/ {p['precio']}\n"
+
+    self.area.text = texto
+
